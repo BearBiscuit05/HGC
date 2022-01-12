@@ -7,14 +7,24 @@ using namespace std;
 class Bellman
 {
 public:
-	Bellman(string GraphPath,string EnvPath,vector<int> &vertexNode);
-	void setGPUEnv(string filePath);
+	Bellman(string GraphPath,string EnvPath,vector<int> &vertexNode,int deviceKind,int partition);
+	void setEnv(string filePath);
 	void loadGraph(string filePath);
-	void Engine(int partition);
 	void MergeGraph(vector<Graph> &subGraph);
-	void MSGGenMerge(Graph& g, vector<int>& mValue);
-	void MSGApply(Graph& g, vector<int>& mValue);
-	int GatherActiveNodeNum(vector<int> activeNodes);
+
+	void Engine_CPU(int partition);
+	void MSGGenMerge_CPU(Graph& g, vector<int>& mValue);
+	void MSGApply_CPU(Graph& g, vector<int>& mValue);
+
+	void Engine_GPU(int partition);
+	void MSGGenMerge_GPU(Graph& g, vector<int>& mValue);
+	void MSGApply_GPU(Graph& g, vector<int>& mValue);
+	int GatherActiveNodeNum_GPU(vector<int> activeNodes);
+
+	void Engine_FPGA(int partition);
+	void MSGGenMerge_FPGA(Graph& g, vector<int>& mValue);
+	void MSGApply_FPGA(Graph& g, vector<int>& mValue);
+	int GatherActiveNodeNum_FPGA(vector<int> activeNodes);
 
 
 	vector<int> initV;

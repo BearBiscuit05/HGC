@@ -23,8 +23,9 @@ void Graph::insertEdge(int src, int dst, double weight)
 
 void Graph::readFile2Graph(string fileName) {
     std::ifstream Gin(fileName);
-    if (!Gin.is_open()) { std::cout << "Error! File testGraph.txt not found!" << std::endl; exit(0); }
+    if (!Gin.is_open()) { std::cout << "Error! File not found!" << std::endl; exit(0); }
     Gin >> this->vCount >> this->eCount;
+    this->vCount++;
     this->vertexID.resize(vCount, 0);
     this->vertexActive.resize(vCount, 0);
     this->edgeSrc.reserve(this->eCount);
@@ -36,7 +37,7 @@ void Graph::readFile2Graph(string fileName) {
         char s;
         int dst, src;
         int weight;
-        Gin >> s >> src >> dst >> weight;
+        Gin >>s>>src >> dst >> weight;
         this->insertEdge(src, dst, weight);
     }
     Gin.close();

@@ -4,12 +4,11 @@
 //#include <vector>
 using namespace std;
 int main() {
-    //vector<int> initV = { 0,2,4 };
-    //Bellman bellman = Bellman("data/testGraph.txt", "env/kernel/Bellman_GPU.cl", initV);
-    //bellman.Engine(10);
-
-    WCC wcc = WCC("data/USA-road-d.BAY.gr", "env/kernel/WCC_GPU.cl");
-    wcc.Engine(20);
+    vector<int> initV = { 0,2,4 };
+    Bellman bellman = Bellman("data/USA-road-d.BAY.gr", "env/kernel/Bellman_GPU.cl", initV,0,10);
+    
+    //WCC wcc = WCC("data/USA-road-d.BAY.gr", "env/kernel/WCC_GPU.cl");
+    //wcc.Engine(20);
 
     //BFS bfs = BFS("data/testGraph.txt", "env/kernel/BFS_GPU.cl",100);
     //bfs.Engine(10);

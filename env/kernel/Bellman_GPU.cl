@@ -31,6 +31,8 @@ __kernel void Apply(__global int* active, __global int* mValues, __global int* v
     }
 }
 
+
+//use for computing active node quantity
 __kernel void Gather(__global int* input, __global int* output, __local int* cache)
 {
     int lid = get_local_id(0);
