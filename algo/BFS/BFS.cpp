@@ -1,12 +1,8 @@
 #include "BFS.h"
-/*
-distance = 0 表示已经遍历 ，INT_MAX表示未遍历
-*/
 
-BFS::BFS(string GraphPath, string EnvPath, int initNode)
+BFS::BFS(string GraphPath, string EnvPath, int initNode, int deviceKind, int partition)
 {
 	loadGraph(GraphPath);
-	setGPUEnv(EnvPath);
 	this->MemSpace = this->graph.vCount;
 	this->graph.distance.resize(MemSpace, INT_MAX);
 	this->graph.vertexActive.resize(this->graph.vCount,0);
@@ -14,9 +10,20 @@ BFS::BFS(string GraphPath, string EnvPath, int initNode)
 	this->graph.distance[initNode] = 0;
 	this->graph.vertexActive[initNode] = 1;
 	this->graph.activeNodeNum = 1;
+
+	if (deviceKind == 0) {
+		this->Engine_CPU(partition);
+	}
+	else if (deviceKind == 1) {
+		setEnv(EnvPath);
+		this->Engine_GPU(partition);
+	}
+	else {
+		this->Engine_FPGA(partition);
+	}
 }
 
-void BFS::setGPUEnv(string filePath)
+void BFS::setEnv(string filePath)
 {
 	this->env.setEnv(filePath);
 	cout << "load GPU env success" << endl;
@@ -28,33 +35,9 @@ void BFS::loadGraph(string filePath)
 	cout << "load graph success" << endl;
 }
 
-void BFS::Engine(int partition)
-{
-	int iter = 0;
-	vector<int> mValues;
-	clock_t start, end;
-	start = clock();
-	while (this->graph.activeNodeNum > 0) {
-		cout << "this is iter : " << iter++ << endl;
-		vector<Graph> subGraph = graph.divideGraphByEdge(partition);
-		for (auto& g : subGraph) {
-			mValues.resize(this->MemSpace, INT_MAX);
-
-			MSGGenMerge(g, mValues);
-
-			MSGApply(g, mValues);
-		}
-
-		MergeGraph(subGraph);
-	}
-	end = clock();
-	cout << "Run time: " << (double)(end - start) / CLOCKS_PER_SEC << "S" << endl;
-}
-
 void BFS::MergeGraph(vector<Graph>& subGraph)
 {
-	//src ,dst distance(viewed),mvalue,activeNode
-	this->graph.vertexActive.resize(this->graph.vCount, 0);
+	this->graph.vertexActive.assign(this->graph.vCount, 0);
 	this->graph.activeNodeNum = 0;
 	for (auto& g : subGraph) {
 		for (int i = 0; i < this->graph.vCount; ++i) {
@@ -71,7 +54,38 @@ void BFS::MergeGraph(vector<Graph>& subGraph)
 
 }
 
-void BFS::MSGGenMerge(Graph& g, vector<int>& mValue)
+void BFS::Engine_GPU(int partition)
+{
+	int iter = 0;
+	vector<int> mValues(this->MemSpace);
+	clock_t start, end,subStart,subEnd;
+	start = clock();
+	while (this->graph.activeNodeNum > 0) {
+		cout << "----------------------" << endl;
+		cout << "this is iter : " << iter++ << endl;
+		vector<Graph> subGraph = graph.divideGraphByEdge(partition);
+		for (auto& g : subGraph) {
+			mValues.assign(this->MemSpace, INT_MAX);
+			subStart = clock();
+			MSGGenMerge_GPU(g, mValues);
+			cout << "Gen run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "S" << endl;
+			subStart = clock();
+			MSGApply_GPU(g, mValues);
+			cout << "Apply run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "S" << endl;
+		}
+		MergeGraph(subGraph); 
+		subStart = clock();
+		this->graph.activeNodeNum = GatherActiveNodeNum_GPU(this->graph.vertexActive);
+		cout << "Gather run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "S" << endl;
+		cout << "------------------------------" << endl;
+		cout << "iter run  time: " << (double)(clock() - start) / CLOCKS_PER_SEC << "S" << endl;
+		cout << "------------------------------" << endl;
+	}
+	end = clock();
+	cout << "Run time: " << (double)(end - start) / CLOCKS_PER_SEC << "S" << endl;
+}
+
+void BFS::MSGGenMerge_GPU(Graph& g, vector<int>& mValue)
 {
 	if (g.vCount <= 0) return;
 
@@ -112,13 +126,13 @@ void BFS::MSGGenMerge(Graph& g, vector<int>& mValue)
 	clWaitForEvents(1, &startEvt);
 
 	iStatus = clEnqueueNDRangeKernel(env.queue, env.kernels[kernelID], dim, NULL, &globalSize, nullptr, 0, NULL, NULL);
-	env.errorCheck(iStatus, "Can not run kernel");
+	env.errorCheck(iStatus, "Can not run GenMerge kernel");
 
 	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][3], CL_TRUE, 0, this->MemSpace * sizeof(int), &mValue[0], 0, NULL, NULL);
 	env.errorCheck(iStatus, "Can not reading result buffer");
 }
 
-void BFS::MSGApply(Graph& g, vector<int>& mValue)
+void BFS::MSGApply_GPU(Graph& g, vector<int>& mValue)
 {
 	fill(g.vertexActive.begin(), g.vertexActive.end(), 0);
 	g.activeNodeNum = 0;
@@ -160,21 +174,22 @@ void BFS::MSGApply(Graph& g, vector<int>& mValue)
 	clWaitForEvents(1, &startEvt);
 
 	iStatus = clEnqueueNDRangeKernel(env.queue, env.kernels[kernelID], dim, NULL, &globalSize, nullptr, 0, NULL, NULL);
-	env.errorCheck(iStatus, "Can not run kernel");
+	env.errorCheck(iStatus, "Can not run Apply kernel");
 
 	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][0], CL_TRUE, 0, g.vCount * sizeof(int), &g.vertexActive[0], 0, NULL, NULL);
 	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][2], CL_TRUE, 0, this->MemSpace * sizeof(int), &g.distance[0], 0, NULL, NULL);
 	env.errorCheck(iStatus, "Can not reading result buffer");
-
-	g.activeNodeNum = GatherActiveNodeNum(g.vertexActive);
 }
 
-int BFS::GatherActiveNodeNum(vector<int> activeNodes)
+int BFS::GatherActiveNodeNum_GPU(vector<int>& activeNodes)
 {
 	int kernelID = 0, index = 0;
-	const size_t globalSize = activeNodes.size();
-	const size_t localSize = globalSize > 1000 ? 1000 : globalSize;
-	int group = globalSize / localSize;
+	const size_t localSize = 1024;
+	int len = activeNodes.size();
+	int group = (len - 1) / localSize + 1;
+	const size_t globalSize = group * localSize;
+	activeNodes.resize(globalSize, 0);
+
 	cl_int iStatus = 0;
 	size_t dim = 1;
 	vector<int> subSum(group, 0);
@@ -200,7 +215,7 @@ int BFS::GatherActiveNodeNum(vector<int> activeNodes)
 	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][1], CL_TRUE, 0, group * sizeof(int), &subSum[0], 0, nullptr, nullptr);
 
 	env.errorCheck(clEnqueueNDRangeKernel(env.queue, env.kernels[kernelID], 1, NULL, &globalSize, &localSize, 0, NULL, NULL),
-		"Can not run kernel");
+		"Can not run Gather kernel");
 
 	env.errorCheck(clEnqueueReadBuffer(env.queue, env.clMem[kernelID][1], CL_TRUE, 0, group * sizeof(int), &subSum[0], 0, NULL, NULL),
 		"Can not reading result buffer");
@@ -210,4 +225,88 @@ int BFS::GatherActiveNodeNum(vector<int> activeNodes)
 		sum += subSum[i];
 	}
 	return sum;
+}
+
+void BFS::Engine_CPU(int partition)
+{
+	int iter = 0;
+	vector<int> mValues(this->MemSpace);
+	clock_t start, end,subStart,subEnd;
+	start = clock();
+	while (this->graph.activeNodeNum > 0) {
+		cout << "----------------------" << endl;
+		cout << "CPU iter : " << iter++ << endl;
+		vector<Graph> subGraph = graph.divideGraphByEdge(partition);
+		for (auto& g : subGraph) {
+			mValues.assign(this->MemSpace, INT_MAX);
+			subStart = clock();
+			MSGGenMerge_CPU(g, mValues);
+			cout << "Gen run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "S" << endl;
+			subStart = clock();
+			MSGApply_CPU(g, mValues);
+			cout << "Apply run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "S" << endl;
+		}
+		MergeGraph(subGraph);
+		subStart = clock();
+		graph.activeNodeNum = GatherActiveNodeNum_CPU(graph.vertexActive);
+		cout << "Gather run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "S" << endl;
+		cout << "------------------------------" << endl;
+		cout << "iter run  time: " << (double)(clock() - start) / CLOCKS_PER_SEC << "S" << endl;
+		cout << "------------------------------" << endl;
+	}
+	end = clock();
+	cout << "Run time: " << (double)(end - start) / CLOCKS_PER_SEC << "S" << endl;
+}
+
+void BFS::MSGGenMerge_CPU(Graph& g, vector<int>& mValue)
+{
+	if (g.vCount <= 0) return;
+	for (int i = 0; i < g.eCount; ++i) {
+		if (g.vertexActive[g.edgeSrc[i]] == 1) {
+			mValue[g.edgeDst[i]] = 0;
+		}
+	}
+}
+
+void BFS::MSGApply_CPU(Graph& g, vector<int>& mValue)
+{
+	if (g.vCount == 0)	return;
+	fill(g.vertexActive.begin(), g.vertexActive.end(), 0);
+	g.activeNodeNum = 0;
+
+	for (int i = 0; i < g.vCount; ++i) {
+		if (mValue[i] < g.distance[i]) {
+			g.distance[i] = mValue[i];
+			g.vertexActive[i] = 1;
+		}
+	}
+}
+
+int BFS::GatherActiveNodeNum_CPU(vector<int>& vec)
+{
+	int len = vec.size(), ans = 0;
+	for (int i = 0; i < len; ++i) {
+		ans += vec[i];
+	}
+	return ans;
+}
+
+void BFS::Engine_FPGA(int partition)
+{
+
+}
+
+void BFS::MSGGenMerge_FPGA(Graph& g, vector<int>& mValue)
+{
+
+}
+
+void BFS::MSGApply_FPGA(Graph& g, vector<int>& mValue)
+{
+
+}
+
+int BFS::GatherActiveNodeNum_FPGA(vector<int>& activeNodes)
+{
+	return 0;
 }

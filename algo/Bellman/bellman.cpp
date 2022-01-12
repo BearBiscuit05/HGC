@@ -74,6 +74,7 @@ void Bellman::Engine_GPU(int partition)
 			MSGApply_GPU(g,mValues);
 		}
 		MergeGraph(subGraph);
+		this->graph.activeNodeNum = GatherActiveNodeNum_GPU(this->graph.vertexActive);
 		cout << "active node number :" << this->graph.activeNodeNum << endl;
 	}
 	end = clock();
@@ -181,18 +182,9 @@ void Bellman::MSGApply_GPU(Graph& g, vector<int>& mValue)
 	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][0], CL_TRUE, 0, g.vCount * sizeof(int), &g.vertexActive[0], 0, NULL, NULL);
 	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][2], CL_TRUE, 0, this->MemSpace * sizeof(int), &g.distance[0], 0, NULL, NULL);
 	env.errorCheck(iStatus, "Can not reading result buffer");
-	
-	//for (int i = 0; i < g.vCount; ++i) {
-	//	g.activeNodeNum += g.vertexActive[i];
-	//}
-	//cout << "CPU count active Node :" << g.activeNodeNum << endl;
-	//g.activeNodeNum = 0;
-	g.activeNodeNum = GatherActiveNodeNum_GPU(g.vertexActive);
-	//cout << "GPU count active Node :" << g.activeNodeNum << endl;
-
 }
 
-int Bellman::GatherActiveNodeNum_GPU(vector<int> activeNodes)
+int Bellman::GatherActiveNodeNum_GPU(vector<int>& activeNodes)
 {
 	int kernelID = 0, index = 0;
 	const size_t localSize = 1024;
@@ -296,6 +288,15 @@ void Bellman::MSGApply_CPU(Graph& g, vector<int>& mValue)
 	}
 }
 
+int Bellman::GatherActiveNodeNum_CPU(vector<int>& vec)
+{
+	int len = vec.size(), ans = 0;
+	for (int i = 0; i < len; ++i) {
+		ans += vec[i];
+	}
+	return ans;
+}
+
 void Bellman::Engine_FPGA(int partition)
 {
 	int iter = 0;
@@ -326,7 +327,7 @@ void Bellman::MSGApply_FPGA(Graph& g, vector<int>& mValue)
 
 }
 
-int Bellman::GatherActiveNodeNum_FPGA(vector<int> activeNodes)
+int Bellman::GatherActiveNodeNum_FPGA(vector<int>& activeNodes)
 {
 	return 0;
 }

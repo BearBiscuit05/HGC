@@ -2,7 +2,6 @@ __kernel void GenMerge(__global int* srcs, __global int* dsts, __global int* wei
     __global int* active,__global int* mValue, __global int* vValue)
 {
     size_t index = get_global_id(0);
-    //check in tree
     if (vValue[srcs[index]] != INT_MAX) {
         if (active[srcs[index]] == 1) {
             atomic_min(&mValue[dsts[index]], weights[index]);

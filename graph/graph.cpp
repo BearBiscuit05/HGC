@@ -34,11 +34,9 @@ void Graph::readFile2Graph(string fileName) {
     for (int i = 0; i < this->vCount; ++i)   this->vertexID[i] = i;
     for (int i = 0; i < eCount; i++)
     {
-        char s;
         int dst, src;
-        int weight;
-        Gin >>s>>src >> dst >> weight;
-        this->insertEdge(src, dst, weight);
+        Gin >>src >> dst ;
+        this->insertEdge(src, dst, 1);
     }
     Gin.close();
 }

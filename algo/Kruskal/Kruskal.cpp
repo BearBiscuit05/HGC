@@ -1,9 +1,8 @@
 #include "Kruskal.h"
 
-Kruskal::Kruskal(string GraphPath, string EnvPath, int initNode)
+Kruskal::Kruskal(string GraphPath, string EnvPath, int initNode, int deviceKind, int partition)
 {
 	loadGraph(GraphPath);
-	setGPUEnv(EnvPath);
 	this->MemSpace = this->graph.vCount;
 	this->graph.distance.resize(MemSpace, INT_MAX);
 	this->graph.vertexActive.reserve(this->graph.vCount);
@@ -11,9 +10,20 @@ Kruskal::Kruskal(string GraphPath, string EnvPath, int initNode)
 	this->graph.distance[initNode] = 0;
 	this->graph.vertexActive[initNode] = 1;
 	this->graph.activeNodeNum = 1;
+
+	if (deviceKind == 0) {
+		this->Engine_CPU(partition);
+	}
+	else if (deviceKind == 1) {
+		setEnv(EnvPath);
+		this->Engine_GPU(partition);
+	}
+	else {
+		this->Engine_FPGA(partition);
+	}
 }
 
-void Kruskal::setGPUEnv(string filePath)
+void Kruskal::setEnv(string filePath)
 {
 	this->env.setEnv(filePath);
 	cout << "load GPU env success" << endl;
@@ -23,29 +33,6 @@ void Kruskal::loadGraph(string filePath)
 {
 	this->graph.readFile2Graph(filePath);
 	cout << "load graph success" << endl;
-}
-
-void Kruskal::Engine(int partition)
-{
-	int iter = 0;
-	vector<int> mValues;
-	clock_t start, end;
-	start = clock();
-	while (this->graph.activeNodeNum > 0) {
-		cout << "this is iter : " << iter++ << endl;
-		vector<Graph> subGraph = graph.divideGraphByEdge(partition);
-		for (auto& g : subGraph) {
-			mValues.resize(this->MemSpace, INT_MAX);
-
-			MSGGenMerge(g, mValues);
-
-			MSGApply(g, mValues);
-		}
-
-		MergeGraph(subGraph);
-	}
-	end = clock();
-	cout << "Run time: " << (double)(end - start) / CLOCKS_PER_SEC << "S" << endl;
 }
 
 void Kruskal::MergeGraph(vector<Graph>& subGraph)
@@ -67,7 +54,31 @@ void Kruskal::MergeGraph(vector<Graph>& subGraph)
 	}
 }
 
-void Kruskal::MSGGenMerge(Graph& g, vector<int>& mValue)
+void Kruskal::Engine_GPU(int partition)
+{
+	int iter = 0;
+	vector<int> mValues(this->MemSpace);
+	clock_t start, end;
+	start = clock();
+	while (this->graph.activeNodeNum > 0) {
+		cout << "----------------------" << endl;
+		cout << "this is iter : " << iter++ << endl;
+		vector<Graph> subGraph = graph.divideGraphByEdge(partition);
+		for (auto& g : subGraph) {
+			mValues.assign(this->MemSpace, INT_MAX);
+
+			MSGGenMerge_GPU(g, mValues);
+
+			MSGApply_GPU(g, mValues);
+		}
+		MergeGraph(subGraph);
+		this->graph.activeNodeNum = GatherActiveNodeNum_GPU(this->graph.vertexActive);
+	}
+	end = clock();
+	cout << "Run time: " << (double)(end - start) / CLOCKS_PER_SEC << "S" << endl;
+}
+
+void Kruskal::MSGGenMerge_GPU(Graph& g, vector<int>& mValue)
 {
 	if (g.vCount <= 0) return;
 
@@ -119,7 +130,7 @@ void Kruskal::MSGGenMerge(Graph& g, vector<int>& mValue)
 	env.errorCheck(iStatus, "Can not reading result buffer");
 }
 
-void Kruskal::MSGApply(Graph& g, vector<int>& mValue)
+void Kruskal::MSGApply_GPU(Graph& g, vector<int>& mValue)
 {
 	fill(g.vertexActive.begin(), g.vertexActive.end(), 0);
 	g.activeNodeNum = 0;
@@ -165,16 +176,17 @@ void Kruskal::MSGApply(Graph& g, vector<int>& mValue)
 	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][0], CL_TRUE, 0, g.vCount * sizeof(int), &g.vertexActive[0], 0, NULL, NULL);
 	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][2], CL_TRUE, 0, this->MemSpace * sizeof(int), &g.distance[0], 0, NULL, NULL);
 	env.errorCheck(iStatus, "Can not reading result buffer");
-
-	g.activeNodeNum = GatherActiveNodeNum(g.vertexActive);
 }
 
-int Kruskal::GatherActiveNodeNum(vector<int> activeNodes)
+int Kruskal::GatherActiveNodeNum_GPU(vector<int>& activeNodes)
 {
 	int kernelID = 0, index = 0;
-	const size_t globalSize = activeNodes.size();
-	const size_t localSize = globalSize > 1000 ? 1000 : globalSize;
-	int group = globalSize / localSize;
+	const size_t localSize = 1024;
+	int len = activeNodes.size();
+	int group = (len - 1) / localSize + 1;
+	const size_t globalSize = group * localSize;
+	activeNodes.resize(globalSize, 0);
+
 	cl_int iStatus = 0;
 	size_t dim = 1;
 	vector<int> subSum(group, 0);
@@ -210,4 +222,88 @@ int Kruskal::GatherActiveNodeNum(vector<int> activeNodes)
 		sum += subSum[i];
 	}
 	return sum;
+}
+
+void Kruskal::Engine_CPU(int partition)
+{
+	int iter = 0;
+	vector<int> mValues(this->MemSpace);
+	clock_t start, end, subStart, subEnd;
+	start = clock();
+	while (this->graph.activeNodeNum > 0) {
+		cout << "----------------------" << endl;
+		cout << "CPU iter : " << iter++ << endl;
+		vector<Graph> subGraph = graph.divideGraphByEdge(partition);
+		for (auto& g : subGraph) {
+			mValues.assign(this->MemSpace, INT_MAX);
+			subStart = clock();
+			MSGGenMerge_CPU(g, mValues);
+			cout << "Gen run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "S" << endl;
+			subStart = clock();
+			MSGApply_CPU(g, mValues);
+			cout << "Apply run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "S" << endl;
+		}
+		MergeGraph(subGraph);
+		subStart = clock();
+		graph.activeNodeNum = GatherActiveNodeNum_CPU(graph.vertexActive);
+		cout << "Gather run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "S" << endl;
+		cout << "------------------------------" << endl;
+		cout << "iter run  time: " << (double)(clock() - start) / CLOCKS_PER_SEC << "S" << endl;
+		cout << "------------------------------" << endl;
+	}
+	end = clock();
+	cout << "Run time: " << (double)(end - start) / CLOCKS_PER_SEC << "S" << endl;
+}
+
+void Kruskal::MSGGenMerge_CPU(Graph& g, vector<int>& mValue)
+{
+	if (g.vCount <= 0) return;
+	for (int i = 0; i < g.eCount; ++i) {
+		if ((g.distance[g.edgeSrc[i]] != INT_MAX)&&(g.vertexActive[g.edgeSrc[i]] == 1)) {
+			mValue[g.edgeDst[i]] = min(mValue[g.edgeDst[i]],g.edgeWeight[i]);
+		}
+	}
+}
+
+void Kruskal::MSGApply_CPU(Graph& g, vector<int>& mValue)
+{
+	if (g.vCount == 0)	return;
+	fill(g.vertexActive.begin(), g.vertexActive.end(), 0);
+	g.activeNodeNum = 0;
+
+	for (int i = 0; i < g.vCount; ++i) {
+		if (mValue[i] < g.distance[i]) {
+			g.distance[i] = mValue[i];
+			g.vertexActive[i] = 1;
+		}
+	}
+}
+
+int Kruskal::GatherActiveNodeNum_CPU(vector<int>& vec)
+{
+	int len = vec.size(), ans = 0;
+	for (int i = 0; i < len; ++i) {
+		ans += vec[i];
+	}
+	return ans;
+}
+
+void Kruskal::Engine_FPGA(int partition)
+{
+
+}
+
+void Kruskal::MSGGenMerge_FPGA(Graph& g, vector<int>& mValue)
+{
+
+}
+
+void Kruskal::MSGApply_FPGA(Graph& g, vector<int>& mValue)
+{
+
+}
+
+int Kruskal::GatherActiveNodeNum_FPGA(vector<int>& activeNodes)
+{
+	return 0;
 }
