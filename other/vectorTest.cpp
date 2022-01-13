@@ -7,7 +7,7 @@ using namespace std;
 int main() {
     clock_t start, end;
 
-    int num = 1048576;
+    int num = 1048576 * 64;
     int dim = 1;
     cl_int iStatus = 0;
     vector<int> nums(num, 2);
@@ -15,9 +15,6 @@ int main() {
     int group = num / localSize;
     const size_t globalSize = num / 4;
     vector<int> sum(group / 4, 0);
-
-    cl_event prof_event;
-    cl_ulong time_start, time_end, total_time;
 
     Env env = Env();
     env.setEnv("env/kernel/add.cl");
@@ -36,17 +33,17 @@ int main() {
     clEnqueueWriteBuffer(env.queue, memA, CL_TRUE, 0, num * sizeof(int), &nums[0], 0, nullptr, nullptr);
     clEnqueueWriteBuffer(env.queue, memB, CL_TRUE, 0, group * sizeof(int), &sum[0], 0, nullptr, nullptr);
 
-    iStatus = clEnqueueNDRangeKernel(env.queue, env.kernels[0], 1, NULL, &globalSize, &localSize, 0, NULL, &prof_event);
-    //env.errorCheck(iStatus, "Can not run kernel");
+    iStatus = clEnqueueNDRangeKernel(env.queue, env.kernels[0], 1, NULL, &globalSize, &localSize, 0, NULL, NULL);
+    env.errorCheck(iStatus, "Can not run kernel");
     iStatus = clEnqueueReadBuffer(env.queue, memB, CL_TRUE, 0, group / 4 * sizeof(int), &sum[0], 0, NULL, NULL);
-    //env.errorCheck(iStatus, "Can not reading result buffer");
+    env.errorCheck(iStatus, "Can not reading result buffer");
     end = clock();
 
     int ans1 = 0;
     for (int i = 0; i < group / 4; ++i) {
         ans1 += sum[i];
     }
-    cout << "GPU Run time: " << (double)(end - start) << "ms" << endl;
+    cout << "GPU Run time: " << (double)(end - start) / CLOCKS_PER_SEC << "S" << endl;
 
     start = clock();
     int ans = 0;
@@ -54,7 +51,7 @@ int main() {
         ans += nums[i];
     }
     end = clock();
-    cout << "CPU Run time: " << (double)(end - start) << "ms" << endl;
+    cout << "CPU Run time: " << (double)(end - start) / CLOCKS_PER_SEC << "S" << endl;
 
     if (ans1 == ans)
         cout << "count success" << endl;

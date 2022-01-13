@@ -1,5 +1,7 @@
 #include "BFS.h"
 
+BFS::BFS(){}
+
 BFS::BFS(string GraphPath, string EnvPath, int initNode, int deviceKind, int partition)
 {
 	loadGraph(GraphPath);
@@ -231,28 +233,19 @@ void BFS::Engine_CPU(int partition)
 {
 	int iter = 0;
 	vector<int> mValues(this->MemSpace);
-	clock_t start, end,subStart,subEnd;
+	clock_t start, end;
 	start = clock();
 	while (this->graph.activeNodeNum > 0) {
 		cout << "----------------------" << endl;
-		cout << "CPU iter : " << iter++ << endl;
 		vector<Graph> subGraph = graph.divideGraphByEdge(partition);
 		for (auto& g : subGraph) {
 			mValues.assign(this->MemSpace, INT_MAX);
-			subStart = clock();
 			MSGGenMerge_CPU(g, mValues);
-			cout << "Gen run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "S" << endl;
-			subStart = clock();
 			MSGApply_CPU(g, mValues);
-			cout << "Apply run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "S" << endl;
 		}
 		MergeGraph(subGraph);
-		subStart = clock();
 		graph.activeNodeNum = GatherActiveNodeNum_CPU(graph.vertexActive);
-		cout << "Gather run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "S" << endl;
-		cout << "------------------------------" << endl;
 		cout << "iter run  time: " << (double)(clock() - start) / CLOCKS_PER_SEC << "S" << endl;
-		cout << "------------------------------" << endl;
 	}
 	end = clock();
 	cout << "Run time: " << (double)(end - start) / CLOCKS_PER_SEC << "S" << endl;

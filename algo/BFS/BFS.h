@@ -7,6 +7,7 @@ using namespace std;
 class BFS
 {
 public:
+	BFS();
 	BFS(string GraphPath, string EnvPath, int initNode, int deviceKind, int partition);
 	void setEnv(string filePath);
 	void loadGraph(string filePath);
