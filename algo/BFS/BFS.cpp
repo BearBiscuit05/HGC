@@ -84,7 +84,7 @@ void BFS::Engine_GPU(int partition)
 		cout << "------------------------------" << endl;
 	}
 	end = clock();
-	cout << "Run time: " << (double)(end - start) / CLOCKS_PER_SEC << "S" << endl;
+	cout << "Run time: " << (double)(end - start) << "ms" << endl;
 }
 
 void BFS::MSGGenMerge_GPU(Graph& g, vector<int>& mValue)
@@ -136,7 +136,6 @@ void BFS::MSGGenMerge_GPU(Graph& g, vector<int>& mValue)
 
 void BFS::MSGApply_GPU(Graph& g, vector<int>& mValue)
 {
-	fill(g.vertexActive.begin(), g.vertexActive.end(), 0);
 	g.activeNodeNum = 0;
 	
 	size_t globalSize = g.vCount;
@@ -186,10 +185,10 @@ void BFS::MSGApply_GPU(Graph& g, vector<int>& mValue)
 int BFS::GatherActiveNodeNum_GPU(vector<int>& activeNodes)
 {
 	int kernelID = 0, index = 0;
-	const size_t localSize = 1024;
+	const size_t localSize = 256;
 	int len = activeNodes.size();
-	int group = (len - 1) / localSize + 1;
-	const size_t globalSize = group * localSize;
+	int group = len/ localSize;
+	const size_t globalSize = len;
 	activeNodes.resize(globalSize, 0);
 
 	cl_int iStatus = 0;
@@ -248,7 +247,7 @@ void BFS::Engine_CPU(int partition)
 		cout << "iter run  time: " << (double)(clock() - start) / CLOCKS_PER_SEC << "S" << endl;
 	}
 	end = clock();
-	cout << "Run time: " << (double)(end - start) / CLOCKS_PER_SEC << "S" << endl;
+	cout << "Run time: " << (double)(end - start) << "ms" << endl;
 }
 
 void BFS::MSGGenMerge_CPU(Graph& g, vector<int>& mValue)

@@ -16,6 +16,9 @@ __kernel void Apply(__global int* active, __global int* mValues, __global int* v
         vValues[index] = mValues[index];
         active[index] = 1;
     }
+    else {
+        active[index] = 0;
+    }
 }
 
 __kernel void Gather(__global int* input, __global int* output, __local int* cache)

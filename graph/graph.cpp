@@ -25,7 +25,7 @@ void Graph::readFile2Graph(string fileName) {
     std::ifstream Gin(fileName);
     if (!Gin.is_open()) { std::cout << "Error! File not found!" << std::endl; exit(0); }
     Gin >> this->vCount >> this->eCount;
-    this->vCount++;
+    this->vCount = ((this->vCount - 1) / 1024 + 1) *1024;
     this->vertexID.resize(vCount, 0);
     this->vertexActive.resize(vCount, 0);
     this->edgeSrc.reserve(this->eCount);
