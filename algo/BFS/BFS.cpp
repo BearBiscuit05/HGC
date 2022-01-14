@@ -240,7 +240,7 @@ int BFS::GatherActiveNodeNum_GPU(vector<int>& activeNodes)
 	int len = activeNodes.size();
 	int group = len/ localSize;
 	const size_t globalSize = len;
-	activeNodes.resize(globalSize, 0);
+	//activeNodes.resize(globalSize, 0);
 
 	cl_int iStatus = 0;
 	size_t dim = 1;

@@ -1,38 +1,32 @@
 __kernel void GenMerge(__global int* srcs, __global int* dsts, __global int* weights,
-    __global int* active, __global int* mValue, __global int* vValue,
-    __global int* initOfNode, __global int* numOfinit)
+    __global int* active, __global int* mValue, __global int* vValue)
 {
     size_t index = get_global_id(0);
     if (active[srcs[index]] == 1) {
-        for (int i = 0; i < numOfinit[0]; ++i) {
-            int init2src = numOfinit[0] * srcs[index] + i;
-            int init2dst = numOfinit[0] * dsts[index] + i;
-            if (vValue[init2src] != INT_MAX) {
-                atomic_min(&mValue[init2dst], vValue[init2src] + weights[index]);
-            }
-        }
+        atomic_min(&mValue[dsts[index]], vValue[srcs[index]] + weights[index]);
     }
     barrier(CLK_GLOBAL_MEM_FENCE);
 }
 
-
 __kernel void Apply(__global int* active, __global int* mValues, __global int* vValues)
 {
-    size_t dst = get_global_id(1);
-    size_t initV = get_global_id(0);
-    size_t vCount = get_global_size(1);
-    size_t initOfVNum = get_global_size(0);
-
-    int index = dst * initOfVNum + initV;
-
+    size_t index = get_global_id(0);
     if (mValues[index] < vValues[index]) {
         vValues[index] = mValues[index];
-        active[dst] = 1;
+        active[index] = 1;
+    }
+    else {
+        active[index] = 0;
     }
 }
 
+__kernel void MergeGraph(__global int* active_1, __global int* active_2, __global int* distance_1, __global int* distance_2)
+{
+    size_t index = get_global_id(0);
+    active_1[index] |= active_2[index];
+    distance_1[index] = min(distance_1[index], distance_2[index]);
+}
 
-//use for computing active node quantity
 __kernel void Gather(__global int* input, __global int* output, __local int* cache)
 {
     int lid = get_local_id(0);

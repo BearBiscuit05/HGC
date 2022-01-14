@@ -7,10 +7,11 @@ using namespace std;
 class Bellman
 {
 public:
-	Bellman(string GraphPath,string EnvPath,vector<int> &vertexNode,int deviceKind,int partition);
+	Bellman(string GraphPath,string EnvPath,int initNode,int deviceKind,int partition);
 	void setEnv(string filePath);
 	void loadGraph(string filePath);
 	void MergeGraph(vector<Graph> &subGraph);
+	void MergeGraph_GPU(vector<Graph>& subGraph);
 
 	void Engine_CPU(int partition);
 	void MSGGenMerge_CPU(Graph& g, vector<int>& mValue);
@@ -27,9 +28,7 @@ public:
 	void MSGApply_FPGA(Graph& g, vector<int>& mValue);
 	int GatherActiveNodeNum_FPGA(vector<int>& activeNodes);
 
-
-	vector<int> initV;
-	int numOfInit = 0;
+	int initNode = 0;
 	int MemSpace = 0;
 	Graph graph;
 	Env env;

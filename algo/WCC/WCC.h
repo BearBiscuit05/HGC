@@ -10,6 +10,7 @@ public:
 	void setEnv(string filePath);
 	void loadGraph(string filePath);
 	void MergeGraph(vector<Graph>& subGraph);
+	void MergeGraph_GPU(vector<Graph>& subGraph);
 
 	void Engine_CPU(int partition);
 	void MSGGenMerge_CPU(Graph& g, vector<int>& mValue);
