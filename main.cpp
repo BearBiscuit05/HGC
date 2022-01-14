@@ -20,5 +20,5 @@ int main() {
         //Env env = Env();
         //env.showDeviceInfo();
     }
-    WCC wcc = WCC("data/10kV_100kE.txt", "env/kernel/WCC_GPU.cl",1,2);
+    Kruskal kruskal = Kruskal("data/Amazon0601.txt", "env/kernel/Kruskal_GPU.cl", 0, 0, 2);
 }
