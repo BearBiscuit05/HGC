@@ -43,18 +43,30 @@ void Graph::readFile2Graph(string fileName) {
 
 vector<Graph> Graph::divideGraphByEdge(int partition)
 {
-    Graph g;
-    vector<Graph> res(partition,g);
-
-    for (int i = 0; i < partition; ++i) {
-        res.at(i).vCount = this->vCount;
-        res.at(i).vertexID = this->vertexID;
-        res.at(i).distance = this->distance;
-        res.at(i).vertexActive = this->vertexActive;
-        res.at(i).activeNodeNum = this->activeNodeNum;
-        for (int k = i * this->eCount / partition; k < (i + 1) * this->eCount / partition; k++)
-            res.at(i).insertEdge(this->edgeSrc.at(k), this->edgeDst.at(k), this->edgeWeight.at(k));
-        res.at(i).eCount = res.at(i).edgeSrc.size();
+    if (subGraph.size() == 0) {
+        Graph g;
+        subGraph.resize(partition, g);
+        for (int i = 0; i < partition; ++i) {
+            subGraph.at(i).vCount = this->vCount;
+            subGraph.at(i).vertexID = this->vertexID;
+            subGraph.at(i).distance = this->distance;
+            subGraph.at(i).vertexActive = this->vertexActive;
+            subGraph.at(i).activeNodeNum = this->activeNodeNum;
+            for (int k = i * this->eCount / partition; k < (i + 1) * this->eCount / partition; k++)
+                subGraph.at(i).insertEdge(this->edgeSrc.at(k), this->edgeDst.at(k), this->edgeWeight.at(k));
+            subGraph.at(i).eCount = subGraph.at(i).edgeSrc.size();
+        }
     }
-    return res;
+    else {
+        for (int i = 0; i < partition; ++i) {
+            subGraph.at(i).distance = this->distance;
+            subGraph.at(i).vertexActive = this->vertexActive;
+            subGraph.at(i).activeNodeNum = this->activeNodeNum;
+        }
+        
+    }
+    
+
+    
+    return this->subGraph;
 }

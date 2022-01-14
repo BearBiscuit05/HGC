@@ -20,5 +20,5 @@ int main() {
         //Env env = Env();
         //env.showDeviceInfo();
     }
-    BFS bfs = BFS("data/10kV_100kE.txt", "env/kernel/BFS_GPU.cl",0,1,2);
+    BFS bfs = BFS("data/roadNet-PA.txt", "env/kernel/BFS_GPU.cl",0,0,2);
 }

@@ -21,6 +21,13 @@ __kernel void Apply(__global int* active, __global int* mValues, __global int* v
     }
 }
 
+__kernel void MergeGraph(__global int* active_1, __global int* active_2, __global int* distance_1, __global int* distance_2)
+{
+    size_t index = get_global_id(0);
+    active_1[index] |= active_2[index];
+    distance_1[index] = min(distance_1[index],distance_2[index]);
+}
+
 __kernel void Gather(__global int* input, __global int* output, __local int* cache)
 {
     int lid = get_local_id(0);

@@ -51,36 +51,87 @@ void BFS::MergeGraph(vector<Graph>& subGraph)
 				this->graph.distance[i] = g.distance[i];
 			}
 		}
-		this->graph.activeNodeNum += g.activeNodeNum;
 	}
+}
 
+void BFS::MergeGraph_GPU(vector<Graph>& subGraph)
+{
+	size_t globalSize = this->graph.vCount;
+	cl_int iStatus = 0;
+	size_t dim = 1;
+	int index = -1;
+
+	int kernelID = 0;
+	if (env.kernels.size() == 2) {
+		kernelID = env.setKernel("MergeGraph");
+		vector<cl_mem> tmp(4, nullptr);
+		tmp[++index] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, this->graph.vCount * sizeof(int), nullptr, nullptr);//src
+		tmp[++index] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, this->graph.vCount * sizeof(int), nullptr, nullptr);//dst
+		tmp[++index] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, this->MemSpace * sizeof(int), nullptr, nullptr);
+		tmp[++index] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, this->MemSpace * sizeof(int), nullptr, nullptr);
+
+		for (int i = 0; i <= index; i++) {
+			if (tmp[i] == nullptr)
+				env.noPtrCheck(nullptr, "set mem error");
+		}
+		env.clMem.push_back(tmp);
+
+		for (int i = 0; i <= index; i++) {
+			iStatus |= clSetKernelArg(env.kernels[kernelID], i, sizeof(cl_mem), &env.clMem[kernelID][i]);
+		}
+		env.errorCheck(iStatus, "set kernel agrs fail!");
+	}
+	else {
+		kernelID = 2;
+	}
+	cl_event startEvt;
+	index = -1;
+	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, this->graph.vCount * sizeof(int), &subGraph[0].vertexActive[0], 0, nullptr, nullptr);
+	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, this->graph.vCount * sizeof(int), &subGraph[1].vertexActive[0], 0, nullptr, nullptr);
+	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, this->MemSpace * sizeof(int), &subGraph[0].distance[0], 0, nullptr, nullptr);
+	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, this->MemSpace * sizeof(int), &subGraph[1].distance[0], 0, nullptr, &startEvt);
+	clWaitForEvents(1, &startEvt);
+
+	iStatus = clEnqueueNDRangeKernel(env.queue, env.kernels[kernelID], dim, NULL, &globalSize, nullptr, 0, NULL, NULL);
+	env.errorCheck(iStatus, "Can not run GenMerge kernel");
+
+	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][0], CL_TRUE, 0, this->MemSpace * sizeof(int), &this->graph.vertexActive[0], 0, NULL, NULL);
+	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][2], CL_TRUE, 0, this->MemSpace * sizeof(int), &this->graph.distance[0], 0, NULL, NULL);
+
+	env.errorCheck(iStatus, "Can not reading result buffer");
 }
 
 void BFS::Engine_GPU(int partition)
 {
 	int iter = 0;
 	vector<int> mValues(this->MemSpace);
-	clock_t start, end,subStart,subEnd;
+	clock_t start, end,subStart,subEnd,subiter;
 	start = clock();
 	while (this->graph.activeNodeNum > 0) {
 		cout << "----------------------" << endl;
 		cout << "this is iter : " << iter++ << endl;
+		subStart = clock();
+		subiter = clock();
 		vector<Graph> subGraph = graph.divideGraphByEdge(partition);
+		cout << "divide run time: " << (double)(clock() - subStart) << "ms" << endl;
 		for (auto& g : subGraph) {
 			mValues.assign(this->MemSpace, INT_MAX);
 			subStart = clock();
 			MSGGenMerge_GPU(g, mValues);
-			cout << "Gen run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "S" << endl;
+			cout << "Gen run time: " << (double)(clock() - subStart) << "ms" << endl;
 			subStart = clock();
 			MSGApply_GPU(g, mValues);
-			cout << "Apply run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "S" << endl;
+			cout << "Apply run time: " << (double)(clock() - subStart) << "ms" << endl;
 		}
-		MergeGraph(subGraph); 
+		subStart = clock();
+		MergeGraph_GPU(subGraph); 
+		cout << "mergeGraph run time: " << (double)(clock() - subStart) << "ms" << endl;
 		subStart = clock();
 		this->graph.activeNodeNum = GatherActiveNodeNum_GPU(this->graph.vertexActive);
-		cout << "Gather run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "S" << endl;
+		cout << "Gather run time: " << (double)(clock() - subStart) << "ms" << endl;
 		cout << "------------------------------" << endl;
-		cout << "iter run  time: " << (double)(clock() - start) / CLOCKS_PER_SEC << "S" << endl;
+		cout << "iter run  time: " << (double)(clock() - subiter) << "ms" << endl;
+		cout << "active node number" << this->graph.activeNodeNum<< endl;
 		cout << "------------------------------" << endl;
 	}
 	end = clock();
@@ -194,7 +245,7 @@ int BFS::GatherActiveNodeNum_GPU(vector<int>& activeNodes)
 	cl_int iStatus = 0;
 	size_t dim = 1;
 	vector<int> subSum(group, 0);
-	if (env.kernels.size() == 2) {
+	if (env.kernels.size() == 3) {
 		kernelID = env.setKernel("Gather");
 		vector<cl_mem> tmp(2, nullptr);
 
@@ -209,7 +260,7 @@ int BFS::GatherActiveNodeNum_GPU(vector<int>& activeNodes)
 		env.errorCheck(clSetKernelArg(env.kernels[kernelID], 2, localSize * sizeof(int), nullptr), "set arg fail");
 	}
 	else {
-		kernelID = 2;
+		kernelID = 3;
 	}
 
 	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][0], CL_TRUE, 0, globalSize * sizeof(int), &activeNodes[0], 0, nullptr, nullptr);
@@ -232,19 +283,34 @@ void BFS::Engine_CPU(int partition)
 {
 	int iter = 0;
 	vector<int> mValues(this->MemSpace);
-	clock_t start, end;
+	clock_t start, end, subStart, subiter;
 	start = clock();
 	while (this->graph.activeNodeNum > 0) {
 		cout << "----------------------" << endl;
+		cout << "this is iter : " << iter++ << endl;
+		subStart = clock();
+		subiter = clock();
 		vector<Graph> subGraph = graph.divideGraphByEdge(partition);
+		cout << "divide run time: " << (double)(clock() - subStart) << "ms" << endl;
 		for (auto& g : subGraph) {
 			mValues.assign(this->MemSpace, INT_MAX);
+			subStart = clock();
 			MSGGenMerge_CPU(g, mValues);
+			cout << "Gen run time: " << (double)(clock() - subStart) << "ms" << endl;
+			subStart = clock();
 			MSGApply_CPU(g, mValues);
+			cout << "Apply run time: " << (double)(clock() - subStart) << "ms" << endl;
 		}
+		subStart = clock();
 		MergeGraph(subGraph);
-		graph.activeNodeNum = GatherActiveNodeNum_CPU(graph.vertexActive);
-		cout << "iter run  time: " << (double)(clock() - start) / CLOCKS_PER_SEC << "S" << endl;
+		cout << "mergeGraph run time: " << (double)(clock() - subStart) << "ms" << endl;
+		subStart = clock();
+		this->graph.activeNodeNum = GatherActiveNodeNum_CPU(this->graph.vertexActive);
+		cout << "Gather run time: " << (double)(clock() - subStart) << "ms" << endl;
+		cout << "------------------------------" << endl;
+		cout << "iter run  time: " << (double)(clock() - subiter) << "ms" << endl;
+		cout << "active node number" << this->graph.activeNodeNum << endl;
+		cout << "------------------------------" << endl;
 	}
 	end = clock();
 	cout << "Run time: " << (double)(end - start) << "ms" << endl;
@@ -254,7 +320,7 @@ void BFS::MSGGenMerge_CPU(Graph& g, vector<int>& mValue)
 {
 	if (g.vCount <= 0) return;
 	for (int i = 0; i < g.eCount; ++i) {
-		if (g.vertexActive[g.edgeSrc[i]] == 1) {
+		if ((g.edgeSrc[i] < g.vCount )&&g.vertexActive[g.edgeSrc[i]] == 1) {
 			mValue[g.edgeDst[i]] = 0;
 		}
 	}

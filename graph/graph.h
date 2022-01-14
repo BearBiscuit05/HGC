@@ -39,4 +39,6 @@ public:
     std::vector<int> vertexID;
     std::vector<int> vertexActive;
     std::vector<int> distance;
+
+    vector<Graph> subGraph = vector<Graph>();
 };
