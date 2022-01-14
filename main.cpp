@@ -1,8 +1,5 @@
 #include "env/opencl.h"
-#include "algo/Bellman/bellman.h"
-#include "algo/WCC/WCC.h"
-#include "algo/BFS/BFS.h"
-#include "algo/Kruskal/Kruskal.h"
+#include "algo/algo.h"
 //#include <iostream>
 //#include <vector>
 
@@ -23,5 +20,5 @@ int main() {
         //Env env = Env();
         //env.showDeviceInfo();
     }
-    Bellman bellman = Bellman("data/roadNet-PA.txt", "env/kernel/Bellman_GPU.cl", 0,1,2);
+    WCC wcc = WCC("data/10kV_100kE.txt", "env/kernel/WCC_GPU.cl",1,2);
 }
