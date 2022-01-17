@@ -51,11 +51,6 @@ void Algo::Engine_GPU(int partition)
 	cout << "Run time: " << (double)(end - start) << "ms" << endl;
 }
 
-void Algo::MSGGenMerge_GPU(Graph& g, vector<int>& mValue)
-{
-
-}
-
 void Algo::MergeGraph_GPU(vector<Graph>& subGraph)
 {
 	size_t globalSize = this->graph.vCount;
@@ -113,7 +108,7 @@ void Algo::MSGApply_GPU(Graph& g, vector<int>& mValue)
 
 	if (env.kernels.size() == 1) {
 		kernelID = env.setKernel("Apply");
-		vector<cl_mem> tmp(4, nullptr);
+		vector<cl_mem> tmp(3, nullptr);
 		index = -1;
 
 		tmp[++index] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, g.vCount * sizeof(int), nullptr, nullptr);

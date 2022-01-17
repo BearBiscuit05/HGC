@@ -1,4 +1,7 @@
 #include "algo/BFS/BFS.h"
+#include "algo/Bellman/Bellman.h"
+#include "algo/Kruskal/Kruskal.h"
+#include "algo/WCC/WCC.h"
 #include "env/opencl.h"
 //#include <iostream>
 //#include <vector>
@@ -20,8 +23,9 @@ int main() {
         //Env env = Env();
         //env.showDeviceInfo();
     }
-    BFS bfs = BFS("data/testGraph.txt", "env/kernel/BFS_GPU.cl",0,0,2);
-
-    
+    //Bellman bellman = Bellman("data/10kV_100kE.txt", "env/kernel/Bellman_GPU.cl",0, 1, 2);
+    //BFS bfs = BFS("data/10kV_100kE.txt", "env/kernel/BFS_GPU.cl",0,1,2);
+    //Kruskal kruskal = Kruskal("data/testGraph.txt", "env/kernel/Kruskal_GPU.cl",0,1,2);
+    //WCC wcc = WCC("data/10kV_100kE.txt", "env/kernel/WCC_GPU.cl",1,2);
 
 }
