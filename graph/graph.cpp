@@ -65,8 +65,5 @@ vector<Graph> Graph::divideGraphByEdge(int partition)
         }
         
     }
-    
-
-    
     return this->subGraph;
 }
