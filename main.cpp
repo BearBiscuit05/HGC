@@ -1,7 +1,4 @@
-#include "algo/BFS/BFS.h"
-#include "algo/Bellman/Bellman.h"
-#include "algo/Kruskal/Kruskal.h"
-#include "algo/WCC/WCC.h"
+#include "algo/algoHead.h"
 #include "env/opencl.h"
 //#include <iostream>
 //#include <vector>
@@ -9,8 +6,7 @@
 using namespace std;
 int main() {
     {
-        /*vector<int> initV = { 0,2,4 };
-        Bellman bellman = Bellman("data/USA-road-d.BAY.gr", "env/kernel/Bellman_GPU.cl", initV,0,10);*/
+        /*Bellman bellman = Bellman("data/USA-road-d.BAY.gr", "env/kernel/Bellman_GPU.cl", initV,0,10);*/
 
         //WCC wcc = WCC("data/USA-road-d.BAY.gr", "env/kernel/WCC_GPU.cl");
         //wcc.Engine(20);
@@ -27,5 +23,12 @@ int main() {
     //BFS bfs = BFS("data/10kV_100kE.txt", "env/kernel/BFS_GPU.cl",0,1,2);
     //Kruskal kruskal = Kruskal("data/testGraph.txt", "env/kernel/Kruskal_GPU.cl",0,1,2);
     //WCC wcc = WCC("data/10kV_100kE.txt", "env/kernel/WCC_GPU.cl",1,2);
-
+    Graph g = Graph();
+    g.readFile2NodeGraph("data/10kV_100kE.txt", 4);
+    if (g.edgeSrc.size() == g.edgeDst.size() * 4) {
+        cout << "set success" << endl;
+    }
+    g.divideGraphByEdge(2);
+    cout << "look" << endl;
+    return 0;
 }

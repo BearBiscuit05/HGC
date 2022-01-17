@@ -28,6 +28,7 @@ public:
     void insertEdge(int src, int dst, double weight);
     void readFile2Graph(string fileName);
     vector<Graph> divideGraphByEdge(int partition);
+    void readFile2NodeGraph(string fileName,int nodeNumber);
 
     int vCount;
     int eCount;
