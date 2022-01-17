@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <unordered_map>
 using namespace std;
 
 class Env
@@ -31,5 +32,7 @@ public:
 	vector<cl_kernel> kernels;
 	cl_command_queue queue = nullptr;
 	vector<vector<cl_mem>> clMem;
+	unordered_map<string, int> nameMapKernel;
+	
 };
 

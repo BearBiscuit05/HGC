@@ -1,11 +1,28 @@
 __kernel void GenMerge(__global int* srcs, __global int* dsts,__global int* active, __global int* mValue)
 {
-
     size_t index = get_global_id(0);
-    //src active -> use edge
     if(active[srcs[index]] == 1) {
         atomic_min(&mValue[dsts[index]], 0);
     }
+    barrier(CLK_GLOBAL_MEM_FENCE);
+}
+
+__kernel void GenMergeByNode(__global int* srcs, __global int* dsts, __global int* active, __global int* mValues)
+{
+    size_t index = get_global_id(0);
+    int dstId = dsts[index];
+    int m = INT_MAX;
+
+    for (int i = 0; i < 8; ++i) {
+        int srcID = srcs[index * 8 + i];
+        if (srcID == dstId)
+            break;
+        if (active[srcID] == 1) {
+            m = 0;
+            break;
+        }
+    }
+    atomic_min(&mValues[dsts[index]], m);
     barrier(CLK_GLOBAL_MEM_FENCE);
 }
 

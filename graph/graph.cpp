@@ -62,7 +62,7 @@ vector<Graph> Graph::divideGraphByEdge(int partition)
                 for (int k = i * iter / partition; k < (i + 1) * iter / partition; k++) {
                     subGraph.at(i).edgeDst.push_back(this->edgeDst[k]);
                     for (int j = 0; j < part; ++j) {
-                        subGraph.at(i).edgeSrc.push_back(4*k + j);
+                        subGraph.at(i).edgeSrc.push_back(this->edgeSrc[4*k + j]);
                         subGraph.at(i).edgeWeight.push_back(1);
                     }
                 }

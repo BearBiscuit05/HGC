@@ -12,6 +12,7 @@ public:
 
 	void Engine_GPU(int partition);
 	virtual void MSGGenMerge_GPU(Graph& g, vector<int>& mValue) {}
+	virtual void MSGGenMergeByNode_GPU(Graph& g, vector<int>& mValue) {}
 	void MergeGraph_GPU(vector<Graph>& subGraph);
 	void MSGApply_GPU(Graph& g, vector<int>& mValue);
 	int GatherActiveNodeNum_GPU(vector<int>& activeNodes);

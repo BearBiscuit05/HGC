@@ -14,6 +14,7 @@ public:
 	int GatherActiveNodeNum_CPU(vector<int>& activeNodes);
 
 	void MSGGenMerge_GPU(Graph& g, vector<int>& mValue);
+	void MSGGenMergeByNode_GPU(Graph& g, vector<int>& mValue) {};
 
 	void Engine_FPGA(int partition);
 	void MSGGenMerge_FPGA(Graph& g, vector<int>& mValue);

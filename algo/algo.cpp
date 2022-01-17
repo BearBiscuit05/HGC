@@ -8,7 +8,8 @@ void Algo::setEnv(string filePath)
 
 void Algo::loadGraph(string filePath)
 {
-	this->graph.readFile2Graph(filePath);
+	this->graph.readFile2NodeGraph(filePath,4);
+	//this->graph.readFile2Graph(filePath);
 	cout << "load graph success" << endl;
 }
 
@@ -21,31 +22,30 @@ void Algo::Engine_GPU(int partition)
 	while (this->graph.activeNodeNum > 0) {
 		cout << "----------------------" << endl;
 		cout << "this is iter : " << iter++ << endl;
-		//subStart = clock();
-		//subiter = clock();
+		subStart = clock();
+		subiter = clock();
 		vector<Graph> subGraph = graph.divideGraphByEdge(partition);
-		//cout << "divide run time: " << (double)(clock() - subStart) << "ms" << endl;
+		cout << "divide run time: " << (double)(clock() - subStart) << "ms" << endl;
 		for (auto& g : subGraph) {
 			mValues.assign(this->MemSpace, INT_MAX);
-			//subStart = clock();
-			MSGGenMerge_GPU(g, mValues);
-			//cout << "Gen run time: " << (double)(clock() - subStart) << "ms" << endl;
-			//subStart = clock();
+			subStart = clock();
+			MSGGenMergeByNode_GPU(g, mValues);
+			//MSGGenMerge_GPU(g, mValues);
+			cout << "Gen run time: " << (double)(clock() - subStart) << "ms" << endl;
+			subStart = clock();
 			MSGApply_GPU(g, mValues);
-			//cout << "Apply run time: " << (double)(clock() - subStart) << "ms" << endl;
+			cout << "Apply run time: " << (double)(clock() - subStart) << "ms" << endl;
 		}
-		//subStart = clock();
+		subStart = clock();
 		MergeGraph_GPU(subGraph);
-		//cout << "mergeGraph run time: " << (double)(clock() - subStart) << "ms" << endl;
-		//subStart = clock();
+		cout << "mergeGraph run time: " << (double)(clock() - subStart) << "ms" << endl;
+		subStart = clock();
 		this->graph.activeNodeNum = GatherActiveNodeNum_GPU(this->graph.vertexActive);
-		//cout << "Gather run time: " << (double)(clock() - subStart) << "ms" << endl;
-		//cout << "------------------------------" << endl;
-		//cout << "iter run  time: " << (double)(clock() - subiter) << "ms" << endl;
+		cout << "Gather run time: " << (double)(clock() - subStart) << "ms" << endl;
+		cout << "------------------------------" << endl;
+		cout << "iter run  time: " << (double)(clock() - subiter) << "ms" << endl;
 		cout << "active node number" << this->graph.activeNodeNum << endl;
 		cout << "------------------------------" << endl;
-		if (iter == 21)
-			break;
 	}
 	end = clock();
 	cout << "Run time: " << (double)(end - start) << "ms" << endl;
@@ -59,8 +59,9 @@ void Algo::MergeGraph_GPU(vector<Graph>& subGraph)
 	int index = -1;
 
 	int kernelID = 0;
-	if (env.kernels.size() == 2) {
-		kernelID = env.setKernel("MergeGraph");
+	if (env.nameMapKernel.find("MergeGraph") == env.nameMapKernel.end()) {
+		env.nameMapKernel["MergeGraph"] = env.setKernel("MergeGraph");
+		kernelID = env.nameMapKernel["MergeGraph"];
 		vector<cl_mem> tmp(4, nullptr);
 		tmp[++index] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, this->graph.vCount * sizeof(int), nullptr, nullptr);//src
 		tmp[++index] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, this->graph.vCount * sizeof(int), nullptr, nullptr);//dst
@@ -79,8 +80,9 @@ void Algo::MergeGraph_GPU(vector<Graph>& subGraph)
 		env.errorCheck(iStatus, "set kernel agrs fail!");
 	}
 	else {
-		kernelID = 2;
+		kernelID = env.nameMapKernel["MergeGraph"];
 	}
+	
 	cl_event startEvt;
 	index = -1;
 	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, this->graph.vCount * sizeof(int), &subGraph[0].vertexActive[0], 0, nullptr, nullptr);
@@ -106,8 +108,9 @@ void Algo::MSGApply_GPU(Graph& g, vector<int>& mValue)
 	cl_int iStatus = 0;
 	size_t dim = 1;
 
-	if (env.kernels.size() == 1) {
-		kernelID = env.setKernel("Apply");
+	if (env.nameMapKernel.find("Apply") == env.nameMapKernel.end()) {
+		env.nameMapKernel["Apply"] = env.setKernel("Apply");
+		kernelID = env.nameMapKernel["Apply"];
 		vector<cl_mem> tmp(3, nullptr);
 		index = -1;
 
@@ -127,7 +130,7 @@ void Algo::MSGApply_GPU(Graph& g, vector<int>& mValue)
 		env.errorCheck(iStatus, "set kernel agrs fail!");
 	}
 	else {
-		kernelID = 1;
+		kernelID = env.nameMapKernel["Apply"];
 	}
 
 	cl_event startEvt;
@@ -156,10 +159,11 @@ int Algo::GatherActiveNodeNum_GPU(vector<int>& activeNodes)
 	cl_int iStatus = 0;
 	size_t dim = 1;
 	vector<int> subSum(group, 0);
-	if (env.kernels.size() == 3) {
-		kernelID = env.setKernel("Gather");
+	if (env.nameMapKernel.find("Gather") == env.nameMapKernel.end())
+	{
+		env.nameMapKernel["Gather"] = env.setKernel("Gather");
+		kernelID = env.nameMapKernel["Gather"];
 		vector<cl_mem> tmp(2, nullptr);
-
 		tmp[0] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, globalSize * sizeof(int), nullptr, nullptr);
 		tmp[1] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, group * sizeof(int), nullptr, nullptr);
 		if (tmp[0] == nullptr || tmp[1] == nullptr)
@@ -171,7 +175,7 @@ int Algo::GatherActiveNodeNum_GPU(vector<int>& activeNodes)
 		env.errorCheck(clSetKernelArg(env.kernels[kernelID], 2, localSize * sizeof(int), nullptr), "set arg fail");
 	}
 	else {
-		kernelID = 3;
+		kernelID = env.nameMapKernel["Gather"];
 	}
 
 	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][0], CL_TRUE, 0, globalSize * sizeof(int), &activeNodes[0], 0, nullptr, nullptr);

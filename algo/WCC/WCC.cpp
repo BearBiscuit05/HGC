@@ -52,8 +52,10 @@ void WCC::MSGGenMerge_GPU(Graph& g, vector<int>& mValue)
 	int index = -1;
 
 	int kernelID = 0;
-	if (env.kernels.size() == 0) {
-		kernelID = env.setKernel("GenMerge");
+	if (env.nameMapKernel.find("GenMerge") == env.nameMapKernel.end())
+	{
+		env.nameMapKernel["GenMerge"] = env.setKernel("GenMerge");
+		kernelID = env.nameMapKernel["GenMerge"];
 		vector<cl_mem> tmp(6, nullptr);
 		tmp[++index] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, g.eCount * sizeof(int), nullptr, nullptr);//src
 		tmp[++index] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, g.eCount * sizeof(int), nullptr, nullptr);//dst
@@ -74,7 +76,7 @@ void WCC::MSGGenMerge_GPU(Graph& g, vector<int>& mValue)
 		env.errorCheck(iStatus, "set kernel agrs fail!");
 	}
 	else {
-		kernelID = 0;
+		kernelID = env.nameMapKernel["GenMerge"];
 	}
 
 	cl_event startEvt;
