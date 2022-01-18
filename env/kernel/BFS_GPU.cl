@@ -7,14 +7,15 @@ __kernel void GenMerge(__global int* srcs, __global int* dsts,__global int* acti
     barrier(CLK_GLOBAL_MEM_FENCE);
 }
 
-__kernel void GenMergeByNode(__global int* srcs, __global int* dsts, __global int* active, __global int* mValues)
+__kernel void GenMergeByNode(__global int* srcs, __global int* dsts, __global int* active, __global int* mValues,__global int* args)
 {
     size_t index = get_global_id(0);
+    size_t globalSize = get_global_size(0);
     int dstId = dsts[index];
     int m = INT_MAX;
 
-    for (int i = 0; i < 8; ++i) {
-        int srcID = srcs[index * 8 + i];
+    for (int i = 0; i < 4; ++i) {
+        int srcID = srcs[index * 4 + i];
         if (srcID == dstId)
             break;
         if (active[srcID] == 1) {

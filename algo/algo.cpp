@@ -8,8 +8,8 @@ void Algo::setEnv(string filePath)
 
 void Algo::loadGraph(string filePath)
 {
-	this->graph.readFile2NodeGraph(filePath,4);
-	//this->graph.readFile2Graph(filePath);
+	//this->graph.readFile2NodeGraph(filePath,4);
+	this->graph.readFile2Graph(filePath);
 	cout << "load graph success" << endl;
 }
 
@@ -17,38 +17,40 @@ void Algo::Engine_GPU(int partition)
 {
 	int iter = 0;
 	vector<int> mValues(this->MemSpace);
-	clock_t start, end, subStart, subEnd, subiter;
+	clock_t start, end, sumClock = 0,subStart;
 	start = clock();
 	while (this->graph.activeNodeNum > 0) {
 		cout << "----------------------" << endl;
 		cout << "this is iter : " << iter++ << endl;
-		subStart = clock();
-		subiter = clock();
+		//subStart = clock();
+		//subiter = clock();
 		vector<Graph> subGraph = graph.divideGraphByEdge(partition);
-		cout << "divide run time: " << (double)(clock() - subStart) << "ms" << endl;
+		//cout << "divide run time: " << (double)(clock() - subStart) << "ms" << endl;
+		//subStart = clock();
 		for (auto& g : subGraph) {
 			mValues.assign(this->MemSpace, INT_MAX);
-			subStart = clock();
-			MSGGenMergeByNode_GPU(g, mValues);
-			//MSGGenMerge_GPU(g, mValues);
-			cout << "Gen run time: " << (double)(clock() - subStart) << "ms" << endl;
-			subStart = clock();
+			//subStart = clock();
+			//MSGGenMergeByNode_GPU(g, mValues);
+			MSGGenMerge_GPU(g, mValues);
+			//cout << "Gen run time: " << (double)(clock() - subStart) << "ms" << endl;
+			//subStart = clock();
 			MSGApply_GPU(g, mValues);
-			cout << "Apply run time: " << (double)(clock() - subStart) << "ms" << endl;
+			//cout << "Apply run time: " << (double)(clock() - subStart) << "ms" << endl;
 		}
-		subStart = clock();
+		//sumClock += clock() - subStart;
+		//subStart = clock();
 		MergeGraph_GPU(subGraph);
-		cout << "mergeGraph run time: " << (double)(clock() - subStart) << "ms" << endl;
-		subStart = clock();
+		//cout << "mergeGraph run time: " << (double)(clock() - subStart) << "ms" << endl;
 		this->graph.activeNodeNum = GatherActiveNodeNum_GPU(this->graph.vertexActive);
-		cout << "Gather run time: " << (double)(clock() - subStart) << "ms" << endl;
-		cout << "------------------------------" << endl;
-		cout << "iter run  time: " << (double)(clock() - subiter) << "ms" << endl;
+		//cout << "Gather run time: " << (double)(clock() - subStart) << "ms" << endl;
+		//cout << "------------------------------" << endl;
+		//cout << "iter run  time: " << (double)(clock() - subiter) << "ms" << endl;
 		cout << "active node number" << this->graph.activeNodeNum << endl;
-		cout << "------------------------------" << endl;
+		//cout << "------------------------------" << endl;
 	}
 	end = clock();
 	cout << "Run time: " << (double)(end - start) << "ms" << endl;
+	cout << "count time: " << sumClock << "ms" << endl;
 }
 
 void Algo::MergeGraph_GPU(vector<Graph>& subGraph)

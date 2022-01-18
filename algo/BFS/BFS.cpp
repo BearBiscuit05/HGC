@@ -100,17 +100,19 @@ void BFS::MSGGenMergeByNode_GPU(Graph& g, vector<int>& mValue)
 	cl_int iStatus = 0;
 	size_t dim = 1;
 	int index = -1;
+	vector<int> args{g.vCount};
 
 	int kernelID = 0;
 	if (env.nameMapKernel.find("GenMergeByNode") == env.nameMapKernel.end())
 	{
 		env.nameMapKernel["GenMergeByNode"] = env.setKernel("GenMergeByNode");
 		kernelID = env.nameMapKernel["GenMergeByNode"];
-		vector<cl_mem> tmp(4, nullptr);
+		vector<cl_mem> tmp(5, nullptr);
 		tmp[++index] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, srcNumber * sizeof(int), nullptr, nullptr);//src
 		tmp[++index] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, dstNumber * sizeof(int), nullptr, nullptr);//dst
 		tmp[++index] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, g.vCount * sizeof(int), nullptr, nullptr);
 		tmp[++index] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, this->MemSpace * sizeof(int), nullptr, nullptr);
+		tmp[++index] = clCreateBuffer(env.context, CL_MEM_READ_WRITE, args.size()*sizeof(int), nullptr, nullptr);
 
 		for (int i = 0; i <= index; i++) {
 			if (tmp[i] == nullptr)
@@ -131,12 +133,14 @@ void BFS::MSGGenMergeByNode_GPU(Graph& g, vector<int>& mValue)
 	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, srcNumber * sizeof(int), &g.edgeSrc[0], 0, nullptr, nullptr);
 	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, dstNumber * sizeof(int), &g.edgeDst[0], 0, nullptr, nullptr);
 	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, g.vCount * sizeof(int), &g.vertexActive[0], 0, nullptr, nullptr);
-	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, this->MemSpace * sizeof(int), &mValue[0], 0, nullptr, &startEvt);
+	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, this->MemSpace * sizeof(int), &mValue[0], 0, nullptr, nullptr);
+	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, args.size() * sizeof(int), &args[0], 0, nullptr, &startEvt);
 	clWaitForEvents(1, &startEvt);
 
 	iStatus = clEnqueueNDRangeKernel(env.queue, env.kernels[kernelID], dim, NULL, &globalSize, nullptr, 0, NULL, NULL);
 	env.errorCheck(iStatus, "Can not run GenMerge kernel");
 
+	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][2], CL_TRUE, 0, g.vCount * sizeof(int), &g.vertexActive[0], 0, NULL, NULL);
 	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][3], CL_TRUE, 0, this->MemSpace * sizeof(int), &mValue[0], 0, NULL, NULL);
 	env.errorCheck(iStatus, "Can not reading result buffer");
 
