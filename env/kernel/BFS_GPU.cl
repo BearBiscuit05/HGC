@@ -24,7 +24,6 @@ __kernel void GenMergeByNode(__global int* srcs, __global int* dsts, __global in
         }
     }
     atomic_min(&mValues[dsts[index]], m);
-    barrier(CLK_GLOBAL_MEM_FENCE);
 }
 
 __kernel void Apply(__global int* active, __global int* mValues, __global int* vValues)

@@ -100,39 +100,40 @@ void WCC::Engine_CPU(int partition)
 {
 	int iter = 0;
 	vector<int> mValues(this->MemSpace);
-	clock_t start, end, subStart, subiter;
+	clock_t start, end, sumClock = 0, subStart, subiter;
 	start = clock();
 	while (this->graph.activeNodeNum > 0) {
 		cout << "----------------------" << endl;
 		cout << "this is iter : " << iter++ << endl;
-		//subStart = clock();
-		//subiter = clock();
+		subStart = clock();
+		subiter = clock();
 		vector<Graph> subGraph = graph.divideGraphByEdge(partition);
-		//cout << "divide run time: " << (double)(clock() - subStart) << "ms" << endl;
+		cout << "divide run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "s" << endl;
+		subStart = clock();
 		for (auto& g : subGraph) {
 			mValues.assign(this->MemSpace, INT_MAX);
-			//subStart = clock();
+			subStart = clock();
+			//MSGGenMergeByNode_GPU(g, mValues);
 			MSGGenMerge_CPU(g, mValues);
-			//cout << "Gen run time: " << (double)(clock() - subStart) << "ms" << endl;
-			//subStart = clock();
+			cout << "Gen run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "s" << endl;
+			subStart = clock();
 			MSGApply_CPU(g, mValues);
-			//cout << "Apply run time: " << (double)(clock() - subStart) << "ms" << endl;
+			cout << "Apply run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "s" << endl;
 		}
-		//subStart = clock();
+		sumClock += clock() - subiter;
+		subStart = clock();
 		MergeGraph(subGraph);
-		//cout << "mergeGraph run time: " << (double)(clock() - subStart) << "ms" << endl;
-		//subStart = clock();
+		cout << "mergeGraph run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "s" << endl;
 		this->graph.activeNodeNum = GatherActiveNodeNum_CPU(this->graph.vertexActive);
-		//cout << "Gather run time: " << (double)(clock() - subStart) << "ms" << endl;
-		//cout << "------------------------------" << endl;
-		//cout << "iter run  time: " << (double)(clock() - subiter) << "ms" << endl;
+		cout << "Gather run time: " << (double)(clock() - subStart) / CLOCKS_PER_SEC << "s" << endl;
+		cout << "------------------------------" << endl;
+		cout << "iter run  time: " << (double)(clock() - subiter) / CLOCKS_PER_SEC << "s" << endl;
 		cout << "active node number" << this->graph.activeNodeNum << endl;
 		cout << "------------------------------" << endl;
-		if (iter == 21)
-			break;
 	}
 	end = clock();
-	cout << "Run time: " << (double)(end - start) << "ms" << endl;
+	cout << "Run time: " << (double)(end - start) / CLOCKS_PER_SEC << "s" << endl;
+	cout << "count time: " << (double)sumClock / CLOCKS_PER_SEC << "s" << endl;
 }
 
 void WCC::MSGGenMerge_CPU(Graph& g, vector<int>& mValue)
