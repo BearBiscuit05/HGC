@@ -238,7 +238,7 @@ void Env::setContext()
 
 void Env::setQueue()
 {
-    this->queue = clCreateCommandQueue(this->context, this->device, 0, NULL);
+    this->queue = clCreateCommandQueue(this->context, this->device, CL_QUEUE_PROFILING_ENABLE, NULL);
     noPtrCheck(this->queue, "Can not create CommandQueue");
 }
 

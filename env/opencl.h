@@ -33,6 +33,5 @@ public:
 	cl_command_queue queue = nullptr;
 	vector<vector<cl_mem>> clMem;
 	unordered_map<string, int> nameMapKernel;
-	
 };
 

@@ -1,5 +1,8 @@
 #include "algo.h"
 
+#define DEBUG
+//#define MERGE_DEBUG
+
 void Algo::setEnv(string filePath)
 {
 	this->env.setEnv(filePath);
@@ -17,9 +20,11 @@ void Algo::Engine_GPU(int partition)
 {
 	int iter = 0;
 	vector<int> mValues(this->MemSpace);
-	clock_t start, end, sumClock = 0,subStart, subiter;
+	clock_t start, end, sumClock = 0,subStart;
 	start = clock();
 	while (this->graph.activeNodeNum > 0) {
+#ifdef DEBUG
+		clock_t subiter;
 		cout << "----------------------" << endl;
 		cout << "this is iter : " << iter++ << endl;
 		subStart = clock();
@@ -47,10 +52,28 @@ void Algo::Engine_GPU(int partition)
 		cout << "iter run  time: " << (double)(clock() - subiter) / CLOCKS_PER_SEC << "s" << endl;
 		cout << "active node number" << this->graph.activeNodeNum << endl;
 		cout << "------------------------------" << endl;
+#else
+		cout << "----------------------" << endl;
+		cout << "this is iter : " << iter++ << endl;
+		vector<Graph> subGraph = graph.divideGraphByEdge(partition);
+		subStart = clock();
+		for (auto& g : subGraph) {
+			mValues.assign(this->MemSpace, INT_MAX);
+			//MSGGenMergeByNode_GPU(g, mValues);
+			MSGGenMerge_GPU(g, mValues);
+			MSGApply_GPU(g, mValues);
+		}
+		MergeGraph_GPU(subGraph);
+		this->graph.activeNodeNum = GatherActiveNodeNum_GPU(this->graph.vertexActive);
+		cout << "------------------------------" << endl;
+		cout << "active node number" << this->graph.activeNodeNum << endl;
+#endif // DEBUG
 	}
 	end = clock();
+	cout << "================================" << endl;
 	cout << "Run time: " << (double)(end - start) / CLOCKS_PER_SEC << "s" << endl;
 	cout << "count time: " << (double)sumClock / CLOCKS_PER_SEC << "s" << endl;
+	cout << "================================" << endl;
 }
 
 void Algo::MergeGraph_GPU(vector<Graph>& subGraph)
@@ -85,21 +108,40 @@ void Algo::MergeGraph_GPU(vector<Graph>& subGraph)
 		kernelID = env.nameMapKernel["MergeGraph"];
 	}
 	
-	cl_event startEvt;
+	cl_event writeEvent,runEvent,readEvent;
 	index = -1;
 	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, this->graph.vCount * sizeof(int), &subGraph[0].vertexActive[0], 0, nullptr, nullptr);
 	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, this->graph.vCount * sizeof(int), &subGraph[1].vertexActive[0], 0, nullptr, nullptr);
 	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, this->MemSpace * sizeof(int), &subGraph[0].distance[0], 0, nullptr, nullptr);
-	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, this->MemSpace * sizeof(int), &subGraph[1].distance[0], 0, nullptr, &startEvt);
-	clWaitForEvents(1, &startEvt);
+	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, this->MemSpace * sizeof(int), &subGraph[1].distance[0], 0, nullptr, &writeEvent);
+	clWaitForEvents(1, &writeEvent);
 
-	iStatus = clEnqueueNDRangeKernel(env.queue, env.kernels[kernelID], dim, NULL, &globalSize, nullptr, 0, NULL, NULL);
+
+	iStatus = clEnqueueNDRangeKernel(env.queue, env.kernels[kernelID], dim, NULL, &globalSize, nullptr, 0, NULL, &runEvent);
 	env.errorCheck(iStatus, "Can not run GenMerge kernel");
+	clWaitForEvents(1, &runEvent);
+
 
 	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][0], CL_TRUE, 0, this->MemSpace * sizeof(int), &this->graph.vertexActive[0], 0, NULL, NULL);
-	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][2], CL_TRUE, 0, this->MemSpace * sizeof(int), &this->graph.distance[0], 0, NULL, NULL);
-
+	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][2], CL_TRUE, 0, this->MemSpace * sizeof(int), &this->graph.distance[0], 0, NULL, &readEvent);
+	clWaitForEvents(1, &runEvent);
 	env.errorCheck(iStatus, "Can not reading result buffer");
+#ifdef MERGE_DEBUG
+	cl_ulong time_start, time_end;
+	clGetEventProfilingInfo(writeEvent, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
+	clGetEventProfilingInfo(writeEvent, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
+	double nanoSeconds = time_end - time_start;
+	printf("OpenCl write buffer time is: %0.5f milliseconds \n", nanoSeconds / 1000000.0);
+	clGetEventProfilingInfo(runEvent, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
+	clGetEventProfilingInfo(runEvent, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
+	nanoSeconds = time_end - time_start;
+	printf("OpenCl Execution time is: %0.5f milliseconds \n", nanoSeconds / 1000000.0);
+	clGetEventProfilingInfo(readEvent, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
+	clGetEventProfilingInfo(readEvent, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
+	nanoSeconds = time_end - time_start;
+	printf("OpenCl read buffer time is: %0.5f milliseconds \n", nanoSeconds / 1000000.0);
+#endif //MERGE_DEBUG
+
 }
 
 void Algo::MSGApply_GPU(Graph& g, vector<int>& mValue)

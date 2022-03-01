@@ -1,4 +1,5 @@
 #include "WCC.h"
+#define GEN_DEBUG
 
 WCC::WCC(string GraphPath, string EnvPath, int deviceKind, int partition)
 {
@@ -79,21 +80,38 @@ void WCC::MSGGenMerge_GPU(Graph& g, vector<int>& mValue)
 		kernelID = env.nameMapKernel["GenMerge"];
 	}
 
-	cl_event startEvt;
+	cl_event writeEvent, runEvent, readEvent;
 	index = -1;
 	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, g.eCount * sizeof(int), &g.edgeSrc[0], 0, nullptr, nullptr);
 	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, g.eCount * sizeof(int), &g.edgeDst[0], 0, nullptr, nullptr);
 	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, g.eCount * sizeof(int), &g.edgeWeight[0], 0, nullptr, nullptr);
 	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, g.vCount * sizeof(int), &g.vertexActive[0], 0, nullptr, nullptr);
 	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, this->MemSpace * sizeof(int), &mValue[0], 0, nullptr, nullptr);
-	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, this->MemSpace * sizeof(int), &g.distance[0], 0, nullptr, &startEvt);
-	clWaitForEvents(1, &startEvt);
+	clEnqueueWriteBuffer(env.queue, env.clMem[kernelID][++index], CL_TRUE, 0, this->MemSpace * sizeof(int), &g.distance[0], 0, nullptr, &writeEvent);
+	clWaitForEvents(1, &writeEvent);
 
-	iStatus = clEnqueueNDRangeKernel(env.queue, env.kernels[kernelID], dim, NULL, &globalSize, nullptr, 0, NULL, NULL);
+	iStatus = clEnqueueNDRangeKernel(env.queue, env.kernels[kernelID], dim, NULL, &globalSize, nullptr, 0, NULL, &runEvent);
 	env.errorCheck(iStatus, "Can not run kernel0");
-
-	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][4], CL_TRUE, 0, this->MemSpace * sizeof(int), &mValue[0], 0, NULL, NULL);
+	clWaitForEvents(1, &runEvent);
+	iStatus = clEnqueueReadBuffer(env.queue, env.clMem[kernelID][4], CL_TRUE, 0, this->MemSpace * sizeof(int), &mValue[0], 0, NULL, &readEvent);
 	env.errorCheck(iStatus, "Can not reading result buffer");
+	clWaitForEvents(1, &readEvent);
+
+#ifdef GEN_DEBUG
+	cl_ulong time_start, time_end;
+	clGetEventProfilingInfo(writeEvent, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
+	clGetEventProfilingInfo(writeEvent, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
+	double nanoSeconds = time_end - time_start;
+	printf("OpenCl write buffer time is: %0.5f ms \n", nanoSeconds / 1000000.0);
+	clGetEventProfilingInfo(runEvent, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
+	clGetEventProfilingInfo(runEvent, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
+	nanoSeconds = time_end - time_start;
+	printf("OpenCl Execution time is: %0.5f ms \n", nanoSeconds / 1000000.0);
+	clGetEventProfilingInfo(readEvent, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, NULL);
+	clGetEventProfilingInfo(readEvent, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, NULL);
+	nanoSeconds = time_end - time_start;
+	printf("OpenCl read buffer time is: %0.5f ms \n", nanoSeconds / 1000000.0);
+#endif //MERGE_DEBUG
 }
 
 void WCC::Engine_CPU(int partition)
