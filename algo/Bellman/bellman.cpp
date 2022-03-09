@@ -94,46 +94,6 @@ void Bellman::MSGGenMerge_GPU(Graph &g,vector<int> &mValue)
 	
 }
 
-void Bellman::Engine_CPU(int partition)
-{
-	int iter = 0;
-	vector<int> mValues(this->MemSpace);
-	clock_t start, end, subStart=0, subiter;
-	start = clock();
-	while (this->graph.activeNodeNum > 0) {
-		cout << "----------------------" << endl;
-		cout << "this is iter : " << iter++ << endl;
-		//subStart = clock();
-		//subiter = clock();
-		vector<Graph> subGraph = graph.divideGraphByEdge(partition);
-		//cout << "divide run time: " << (double)(clock() - subStart) << "ms" << endl;
-		for (auto& g : subGraph) {
-			mValues.assign(this->MemSpace, INT_MAX);
-			//subStart = clock();
-			MSGGenMerge_CPU(g, mValues);
-			//cout << "Gen run time: " << (double)(clock() - subStart) << "ms" << endl;
-			//subStart = clock();
-			MSGApply_CPU(g, mValues);
-			//cout << "Apply run time: " << (double)(clock() - subStart) << "ms" << endl;
-		}
-		//subStart = clock();
-		MergeGraph(subGraph);
-		//cout << "mergeGraph run time: " << (double)(clock() - subStart) << "ms" << endl;
-		//subStart = clock();
-		this->graph.activeNodeNum = GatherActiveNodeNum_CPU(this->graph.vertexActive);
-		//cout << "Gather run time: " << (double)(clock() - subStart) << "ms" << endl;
-		//cout << "------------------------------" << endl;
-		//cout << "iter run  time: " << (double)(clock() - subiter) << "ms" << endl;
-		cout << "active node number" << this->graph.activeNodeNum << endl;
-		cout << "------------------------------" << endl;
-		if (iter == 21)
-			break;
-	}
-	end = clock();
-	cout << "Run time: " << (double)(end - start) << "ms" << endl;
-	
-}
-
 void Bellman::MSGGenMerge_CPU(Graph& g, vector<int>& mValue)
 {
 	if (g.vCount == 0)	return;
@@ -146,30 +106,6 @@ void Bellman::MSGGenMerge_CPU(Graph& g, vector<int>& mValue)
 	}
 }
 
-void Bellman::MSGApply_CPU(Graph& g, vector<int>& mValue)
-{
-	if (g.vCount == 0)	return;
-	fill(g.vertexActive.begin(), g.vertexActive.end(), 0);
-	g.activeNodeNum = 0;
-
-	for (int i = 0; i < this->MemSpace; i++)
-	{
-		if (g.distance[i] > mValue[i])
-		{
-			g.distance[i] = mValue[i];
-			g.vertexActive[i] = 1;
-		}
-	}
-}
-
-int Bellman::GatherActiveNodeNum_CPU(vector<int>& vec)
-{
-	int len = vec.size(), ans = 0;
-	for (int i = 0; i < len; ++i) {
-		ans += vec[i];
-	}
-	return ans;
-}
 
 void Bellman::Engine_FPGA(int partition)
 {
