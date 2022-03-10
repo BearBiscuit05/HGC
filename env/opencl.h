@@ -1,6 +1,10 @@
 #define _CRT_SECURE_NO_DEPRECATE
 #pragma once
+#ifdef __APPLE__
+#include <OpenCL/opencl.h>
+#else
 #include <CL/cl.h>
+#endif
 #include <iostream>
 #include <vector>
 #include <fstream>

@@ -41,7 +41,7 @@ x64/
 .DS_Store
 *~
 cmake-build-debug/
-
+googletest/
 .vs
 *.sln
 *.vcxproj
