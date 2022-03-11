@@ -2,7 +2,8 @@ add_library(algo
         Bellman/bellman.cpp Bellman/bellman.h
         BFS/BFS.cpp BFS/BFS.h
         Kruskal/Kruskal.cpp Kruskal/Kruskal.h
-        WCC/WCC.cpp WCC/WCC.h)
+        WCC/WCC.cpp WCC/WCC.h
+        PR/PR.cpp PR/PR.h)
 
 add_library(basic_algo algo.cpp algo.h algoHead.h)
 target_link_libraries(basic_algo env graph)

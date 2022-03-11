@@ -16,6 +16,28 @@ void Algo::loadGraph(string filePath)
 	cout << "load graph success" << endl;
 }
 
+Algo::Algo(string GraphPath, string EnvPath, const string& deviceKind, int partition) {
+    loadGraph(GraphPath);
+    this->MemSpace = this->graph.vCount;
+    this->graph.distance.resize(MemSpace, -1);
+    for (int i = 0; i < this->graph.vCount; ++i)	this->graph.distance[i] = i;
+
+    this->graph.vertexActive.reserve(this->graph.vCount);
+    this->graph.vertexActive.assign(this->graph.vCount,1);
+    this->graph.activeNodeNum = this->graph.vCount;
+
+    if (deviceKind == "CPU") {
+        this->Engine_CPU(partition);
+    }
+    else if (deviceKind == "GPU") {
+        setEnv(EnvPath);
+        this->Engine_GPU(partition);
+    }
+    else if (deviceKind == "FPGA"){
+        this->Engine_FPGA(partition);
+    }
+}
+
 void Algo::Engine_GPU(int partition)
 {
 	int iter = 0;
@@ -319,3 +341,5 @@ int Algo::GatherActiveNodeNum_CPU(vector<int>& activeNodes)
 	}
 	return ans;
 }
+
+
