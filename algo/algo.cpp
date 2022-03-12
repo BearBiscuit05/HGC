@@ -319,3 +319,20 @@ int Algo::GatherActiveNodeNum_CPU(vector<int>& activeNodes)
 	}
 	return ans;
 }
+
+void Algo::Engine_FPGA(int partition)
+{
+}
+
+void Algo::MergeGraph_FPGA(vector<Graph>& subGraph)
+{
+}
+
+void Algo::MSGApply_FPGA(Graph& g, vector<int>& mValue)
+{
+}
+
+int Algo::GatherActiveNodeNum_FPGA(vector<int>& activeNodes)
+{
+	return 0;
+}

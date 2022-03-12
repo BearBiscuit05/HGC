@@ -87,22 +87,7 @@ void Kruskal::MSGGenMerge_CPU(Graph& g, vector<int>& mValue)
 	}
 }
 
-void Kruskal::Engine_FPGA(int partition)
-{
-
-}
-
 void Kruskal::MSGGenMerge_FPGA(Graph& g, vector<int>& mValue)
 {
 
-}
-
-void Kruskal::MSGApply_FPGA(Graph& g, vector<int>& mValue)
-{
-
-}
-
-int Kruskal::GatherActiveNodeNum_FPGA(vector<int>& activeNodes)
-{
-	return 0;
 }
