@@ -24,12 +24,13 @@ public:
 	int GatherActiveNodeNum_CPU(vector<int>& activeNodes);
 	virtual void MSGGenMerge_CPU(Graph& g, vector<int>& mValue) {}
 
-    virtual void Engine_FPGA(int partition);
-    virtual void MergeGraph_CPU(vector<Graph>& subGraph);
-    virtual void MSGApply_CPU(Graph& g, vector<int>& mValue);
-    virtual int GatherActiveNodeNum_CPU(vector<int>& activeNodes);
-    virtual void MSGGenMerge_CPU(Graph& g, vector<int>& mValue) {}
-    int MemSpace = 0;
+	void Engine_FPGA(int partition);
+	void MergeGraph_FPGA(vector<Graph>& subGraph);
+	void MSGApply_FPGA(Graph& g, vector<int>& mValue);
+	int GatherActiveNodeNum_FPGA(vector<int>& activeNodes);
+	virtual void MSGGenMerge_FPGA(Graph& g, vector<int>& mValue) {}
+	int MemSpace = 0;
+
 	Graph graph;
 	Env env;
 };

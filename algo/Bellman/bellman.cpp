@@ -107,37 +107,8 @@ void Bellman::MSGGenMerge_CPU(Graph& g, vector<int>& mValue)
 }
 
 
-void Bellman::Engine_FPGA(int partition)
-{
-	int iter = 0;
-	vector<int> mValues;
-	clock_t start, end;
-	start = clock();
-	while (this->graph.activeNodeNum > 0) {
-		cout << "this is iter : " << iter++ << endl;
-		vector<Graph> subGraph = graph.divideGraphByEdge(partition);
-		for (auto& g : subGraph) {
-			mValues.resize(this->MemSpace, INT_MAX);
-			MSGGenMerge_GPU(g, mValues);
-			MSGApply_GPU(g, mValues);
-		}
-		MergeGraph(subGraph);
-	}
-	end = clock();
-	cout << "Run time: " << (double)(end - start) / CLOCKS_PER_SEC << "S" << endl;
-}
 
 void Bellman::MSGGenMerge_FPGA(Graph& g, vector<int>& mValue)
 {
 
-}
-
-void Bellman::MSGApply_FPGA(Graph& g, vector<int>& mValue)
-{
-
-}
-
-int Bellman::GatherActiveNodeNum_FPGA(vector<int>& activeNodes)
-{
-	return 0;
 }

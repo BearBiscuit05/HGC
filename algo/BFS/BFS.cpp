@@ -139,22 +139,7 @@ void BFS::MSGGenMerge_CPU(Graph& g, vector<int>& mValue)
 	}
 }
 
-void BFS::Engine_FPGA(int partition)
-{
-
-}
-
 void BFS::MSGGenMerge_FPGA(Graph& g, vector<int>& mValue)
 {
 
-}
-
-void BFS::MSGApply_FPGA(Graph& g, vector<int>& mValue)
-{
-
-}
-
-int BFS::GatherActiveNodeNum_FPGA(vector<int>& activeNodes)
-{
-	return 0;
 }
