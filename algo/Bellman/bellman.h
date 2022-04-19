@@ -6,7 +6,7 @@ using namespace std;
 class Bellman : public Algo
 {
 public:
-	Bellman(string GraphPath,string EnvPath,int initNode,int deviceKind,int partition);
+	Bellman(string GraphPath,string EnvPath,int initNode,const string& deviceKind,int partition);
 	void MergeGraph(vector<Graph>& subGraph);
 
 	void MSGGenMerge_CPU(Graph& g, vector<int>& mValue);

@@ -5,7 +5,7 @@
 class Kruskal : public Algo
 {
 public:
-	Kruskal(string GraphPath, string EnvPath,int initNode, int deviceKind, int partition);
+	Kruskal(string GraphPath, string EnvPath,int initNode, const string& deviceKind, int partition);
 	void MSGGenMerge_CPU(Graph& g, vector<int>& mValue);
 
 	void MSGGenMerge_GPU(Graph& g, vector<int>& mValue);

@@ -6,8 +6,7 @@ using namespace std;
 class WCC : public Algo
 {
 public:
-	WCC(string GraphPath, string EnvPath, string deviceKind, int partition) :
-        Algo(GraphPath,EnvPath,deviceKind,partition) {};
+	WCC(string GraphPath, string EnvPath, const string& deviceKind, int partition);
 
 	void MSGGenMerge_CPU(Graph& g, vector<int>& mValue) override;
 

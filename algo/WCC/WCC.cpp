@@ -1,7 +1,7 @@
 #include "WCC.h"
 #define GEN_DEBUG
 
-WCC::WCC(string GraphPath, string EnvPath, int deviceKind, int partition)
+WCC::WCC(string GraphPath, string EnvPath, const string& deviceKind, int partition)
 {
 	loadGraph(GraphPath);
 	this->MemSpace = this->graph.vCount;
@@ -12,10 +12,10 @@ WCC::WCC(string GraphPath, string EnvPath, int deviceKind, int partition)
 	this->graph.vertexActive.assign(this->graph.vCount,1);
 	this->graph.activeNodeNum = this->graph.vCount;
 
-	if (deviceKind == 0) {
+	if (deviceKind == "CPU") {
 		this->Engine_CPU(partition);
 	}
-	else if (deviceKind == 1) {
+	else if (deviceKind == "GPU") {
 		setEnv(EnvPath);
 		this->Engine_GPU(partition);
 	}

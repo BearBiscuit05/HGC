@@ -1,6 +1,6 @@
 #include "bellman.h"
 
-Bellman::Bellman(string GraphPath, string EnvPath, int initNode, int deviceKind, int partition)
+Bellman::Bellman(string GraphPath, string EnvPath, int initNode, const string& deviceKind, int partition)
 {
 	loadGraph(GraphPath);
 	this->MemSpace = this->graph.vCount;
@@ -9,10 +9,10 @@ Bellman::Bellman(string GraphPath, string EnvPath, int initNode, int deviceKind,
 	graph.distance[initNode] = 0;
 	this->graph.activeNodeNum = 1;
 
-	if (deviceKind == 0) {
+	if (deviceKind == "CPU") {
 		this->Engine_CPU(partition);
 	}
-	else if (deviceKind == 1) {
+	else if (deviceKind == "GPU") {
 		setEnv(EnvPath);
 		this->Engine_GPU(partition);
 	}

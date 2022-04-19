@@ -7,7 +7,7 @@
 class Algo
 {
 public:
-    Algo(string GraphPath, string EnvPath, const string& deviceKind, int partition);
+    // Algo(string GraphPath, string EnvPath, const string& deviceKind, int partition);
 	void setEnv(string filePath);
 	void loadGraph(string filePath);
 

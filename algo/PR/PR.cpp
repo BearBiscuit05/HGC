@@ -1,6 +1,6 @@
 #include "PR.h"
 
-PR::PR(std::string GraphPath, std::string EnvPath, std::string deviceKind, int partition)
+PR::PR(std::string GraphPath, std::string EnvPath, const std::string& deviceKind, int partition)
 {
 	loadGraph(GraphPath);
 	this->MemSpace = this->graph.vCount;

@@ -7,7 +7,7 @@ class BFS : public Algo
 {
 public:
 	BFS();
-	BFS(string GraphPath, string EnvPath, int initNode, int deviceKind, int partition);
+	BFS(string GraphPath, string EnvPath, int initNode, const string& deviceKind, int partition);
 
 	void MSGGenMerge_CPU(Graph& g, vector<int>& mValue);
 
