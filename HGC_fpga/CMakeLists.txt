@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.10)
+
+project(CMakeTest)
+
+EXECUTE_PROCESS(COMMAND aocl ldlibs
+        TIMEOUT 5
+        OUTPUT_VARIABLE AOCL_LINK_LIBS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+
+EXECUTE_PROCESS(COMMAND aocl ldflags
+        TIMEOUT 5
+        OUTPUT_VARIABLE AOCL_LINK_FLAGS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        )    
+
+EXECUTE_PROCESS(COMMAND aocl compile-config
+        TIMEOUT 5
+        OUTPUT_VARIABLE AOCL_COMPILE_CONFIG
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        )    
+#$(CXX) ${CPP_FLAGS} $(CXXFLAGS) -fPIC $(foreach D,$(INC_DIRS),-I$D) \
+#$(AOCL_COMPILE_CONFIG) $(SRCS) $(AOCL_LINK_CONFIG) \
+#$(foreach L,$(LIBS),-l$L) \
+#-o $(TARGET_DIR)/$(TARGET)

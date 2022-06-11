@@ -1,3 +1,5 @@
+*.aocx
+*.aocr
 # Prerequisites
 *.d
 
