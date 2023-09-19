@@ -49,3 +49,7 @@ googletest/
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
+*.xclbin
+*.xo
+*.log
+.vscode

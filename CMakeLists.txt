@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 find_package(OpenCL)
 message("OpenCL is find : " ${OpenCL_FOUND})
+message("OpenCL lib Path : " ${OpenCL_LIBRARIES})
 
 add_library(graph graph/graph.cpp graph/graph.h)
 add_library(env env/opencl.cpp env/opencl.h)
